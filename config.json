@@ -1,0 +1,66 @@
+{
+    "wxxcx": {
+        "appid": "",
+        "appsec": ""
+    },
+    "openwechat":{
+        "appid":"开放平台appid",
+        "appsec":"开放平台appsec"
+    },
+
+    "pay":{
+        "app_wechat":{
+            "mchid":"APP微信支付对应的商户号",
+            "aes_v3_key":"APP微信支付:微信商户的APIV3密钥",
+            "mchserialnum":"APP微信支付:商户API证书apiclient_cert.pem的序列号,然后打开https://myssl.com/cert_decode.html将此证书上传进行解码, 查看其中的'证书信息'->'序列号'列信息(微信官方推荐),   序列号可以通过https://myssl.com/cert_decode.html上传PEM获得",
+            "privatepem":{
+                "local":"APP微信支付:微信API证书apiclient_key.pem的本地存储路径",
+                "remote":"APP微信支付:微信API证书apiclient_key.pem的运行环境存储路径"
+            },
+            "wechatpem":{
+                "local":"APP微信支付:微信平台证书本地存储路径,首次下载:https://github.com/wechatpay-apiv3/CertificateDownloader",
+                "remote":"APP微信支付:微信平台证书运行环境存储路径"
+            }
+        }
+    },
+
+    "qcloudkey":{
+        "appid":"",
+        "secid":"",
+        "seckey":""
+    },
+    "scf":{
+        "region":""
+    },
+    "qcloudcos":{
+        "region":"",
+        "bucket":""
+    },
+    "qqxcx":{
+        "appid":"",
+        "appsec":""
+    },
+    "local_db": {
+        "database_type": "mysql",
+        "database_name": "",
+        "server": "",
+        "username": "",
+        "password": ""
+    },
+    "remote_db": {
+        "database_type": "mysql",
+        "database_name": "",
+        "server": "",
+        "username": "",
+        "password": ""
+    },
+    "uidkey":"",
+    "xcxpage":{
+        "pages/xxx/yyy":"description"
+    },
+    "rsa":{
+        "public":[],
+        "private":[]
+    }
+  
+}

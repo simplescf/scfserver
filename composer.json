@@ -1,0 +1,22 @@
+{
+    "name": "simplescf/scfserver",
+    "description": "simple scf for qcloud scf",
+    "type": "library",
+    "authors": [
+        {
+            "name": "tsr",
+            "email": "28431799@qq.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {"sscf\\": "src/"}
+    },
+    "require": {
+        "guzzlehttp/guzzle": "~6.3",
+        "qcloud/cos-sdk-v5": ">=2.0",
+        "mustangostang/spyc": "0.6.3",
+        "tencentcloudbase/tcb-php-sdk": ">=1.0.2",
+        "wechatpay/wechatpay-guzzle-middleware": ">=0.2.2",
+        "tencentcloud/tencentcloud-sdk-php": "^3.0"
+    }
+}
