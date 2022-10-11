@@ -1,10 +1,10 @@
 <?php
 /*
- * @Author: your name
+ * @Author: tsr
  * @Date: 2020-05-19 21:25:38
  * @LastEditTime: 2021-11-04 13:31:07
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
+ * @LastEditors: tsr
+ * @Description: mysql数据库ORM
  * @FilePath: /simplescf/src/SSTcbDB.php
  */
 
@@ -141,11 +141,11 @@ class SSPdo
 
     /**
      * 在表中插入一个对象
-     * @param array $obj 插入的对象数据
      * @param string $beanName collect对应的配置文件中的名称
+     * @param array $obj 插入的对象数据
      * @return bool|int false失败, 否则返回新增id
      */
-    public function addObject($obj, $beanName)
+    public function addObject($beanName, $obj)
     {
         try {
             $bean = $this->conf->loadByKey("db")[$beanName];
@@ -176,7 +176,14 @@ class SSPdo
         return false;
     }
 
-    public function addObjectBatch($objs, $beanName)
+
+    /**
+     * 批量增加对象
+     * @param string $beanName collect对应的配置文件中的名称
+     * @param array $objs 插入的对象数据
+     * @return bool|int false失败, 否则返回新增id
+     */
+    public function addObjectBatch($beanName, $objs)
     {
         try {
             $bean = $this->conf->loadByKey("db")[$beanName];
@@ -1205,15 +1212,15 @@ class SSPdo
 
     /**
      * @description: 更新指定条件的对象
-     * @param object $newData 要更新的各属性值集合对象
      * @param string $beanName 集合/表名
+     * @param object $newData 要更新的各属性值集合对象
      * @param array $obj 条件
      * @return int|false false失败/否则返回更新条数
      */
-    public function updateObject($newData, $beanName, $obj=[])
+    public function updateObject($beanName, $newData,  $para=[])
     {
-        if (sizeof($obj) > 0) {
-            $this->initConf($beanName, $obj);
+        if (sizeof($para) > 0) {
+            $this->initConf($beanName, $para);
         }
 
         if (sizeof($this->whereState) == 0) {

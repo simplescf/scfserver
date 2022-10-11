@@ -1,20 +1,13 @@
 <?php
 /*
- * @Author: your name
+ * @Author: tsr
  * @Date: 2021-10-24 10:45:58
- * @LastEditTime: 2021-10-24 10:57:03
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
+ * @LastEditTime: 2022-10-11
+ * @LastEditors: tsr
+ * @Description: OCR文字识别
  * @FilePath: /simplescf/src/SSOcr.php
  */
-/*!
- * Qcloud SCF core
- * 
- * Version 0.01
- *
- * Copyright 2020, tao zhang
- * Released under the MIT license
- */
+
 
 namespace sscf;
 

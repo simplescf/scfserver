@@ -2,11 +2,11 @@
 namespace sscf;
 
 /*
- * @Author: tao zhang
+ * @Author: tsr
  * @Date: 2021-05-07 15:15:32
  * @LastEditTime: 2021-05-07 15:55:16
- * @LastEditors: Please set LastEditors
- * @Description: 统一执行结果
+ * @LastEditors: tsr
+ * @Description: 返回结果统一处理
  */
 
 class SSRes

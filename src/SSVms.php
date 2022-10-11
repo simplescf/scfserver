@@ -1,10 +1,10 @@
 <?php
 /*
- * @Author: your name
+ * @Author: tsr
  * @Date: 2021-08-22 15:21:04
  * @LastEditTime: 2021-08-22 16:00:39
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
+ * @LastEditors: tsr
+ * @Description: 腾讯云的VMS语音消息支持
  * @FilePath: /antnewserver/vendor/sscf/simplescf/src/SSVms.php
  */
 

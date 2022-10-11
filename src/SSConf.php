@@ -1,10 +1,10 @@
 <?php
 /*
- * @Author: your name
+ * @Author: tsr
  * @Date: 2020-02-03 12:03:51
  * @LastEditTime: 2021-10-21 22:08:54
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
+ * @LastEditors: tsr
+ * @Description: 读取解析配置文件
  */
 namespace sscf;
 

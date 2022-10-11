@@ -1,10 +1,10 @@
 <?php
 /*
- * @Author: your name
+ * @Author: tsr
  * @Date: 2020-02-11 22:28:25
- * @LastEditTime: 2021-08-18 16:47:45
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
+ * @LastEditTime: 2021-08-18
+ * @LastEditors: tsr
+ * @Description: 地址位置信息处理
  * @FilePath: /simplescf/src/SSUtil.php
  */
 

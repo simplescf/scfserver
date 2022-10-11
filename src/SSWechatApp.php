@@ -1,10 +1,10 @@
 <?php
 /*
- * @Author: your name
+ * @Author: tsr
  * @Date: 2021-06-20 20:41:27
  * @LastEditTime: 2021-06-21 17:08:23
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
+ * @LastEditors: tsr
+ * @Description: 微信APP的支持
  * @FilePath: /simplescf/src/SSWechatApp.php
  */
 namespace sscf;

@@ -1,10 +1,10 @@
 <?php
 /*
- * @Author: your name
+ * @Author: tsr
  * @Date: 2020-05-19 21:25:38
  * @LastEditTime: 2021-11-04 13:31:07
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
+ * @LastEditors: tsr
+ * @Description: 腾讯云TCB的数据库支持
  * @FilePath: /simplescf/src/SSTcbDB.php
  */
 

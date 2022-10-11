@@ -1,10 +1,9 @@
 <?php
 /*
- * @Author: your name
+ * @Author: tsr
  * @Date: 2020-02-03 12:18:22
- * @LastEditTime: 2021-11-04 18:14:01
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
+ * @LastEditTime: 2022-10-11
+ * @LastEditors: tsr
  * @FilePath: /simplescf/src/ssautoload.php
  */
 
@@ -19,5 +18,3 @@ require_once __DIR__ . "/SSBarcode.php";
 require_once __DIR__ . "/SSRes.php";
 require_once __DIR__ . "/SSPdo.php";
 require_once __DIR__ . "/SSHtml.php";
-// require_once __DIR__ ."/../vendor/autoload.php";
-// require_once __DIR__ . "/lib/tencentcloud-sdk-php/TCloudAutoLoader.php";

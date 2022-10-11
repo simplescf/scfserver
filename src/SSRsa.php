@@ -1,10 +1,10 @@
 <?php
 /*
- * @Author: your name
+ * @Author: tsr
  * @Date: 2020-12-13 12:20:03
  * @LastEditTime: 2021-10-27 19:29:31
- * @LastEditors: Please set LastEditors
- * @Description: In User Settings Edit
+ * @LastEditors: tsr
+ * @Description: RSA加解密
  * @FilePath: /simplescf/src/SSRsa.php
  */
 

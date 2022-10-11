@@ -7,9 +7,6 @@ require_once __DIR__ . "/lib/wxpay/lib/WxPay.Api.php";
 require_once __DIR__ . "/lib/wxpay/pay/WxPay.JsApiPay.php";
 require_once __DIR__ . '/lib/wxpay/pay/WxPay.Config.php';
 
-use GuzzleHttp\Exception\RequestException;
-use WechatPay\GuzzleMiddleware\Util\PemUtil;
-use WechatPay\GuzzleMiddleware\WechatPayMiddleware;
 
 /**
  * 微信开发相关
