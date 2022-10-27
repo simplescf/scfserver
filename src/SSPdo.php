@@ -758,7 +758,11 @@ class SSPdo
                 foreach($this->relConfs[$join['toobj']] as $k=>$v){
                     $t = $this->beans[$join['toobj']]['table'];
                     $f = $tmpProps[$k]['field'];
-                    array_push($tmps,  "`{$t}`.{$f}=".$v);
+                    if($this->isStr($tmpProps[$k]['type'])){
+                        array_push($tmps,  "`{$t}`.{$f}='".$v."'");
+                    }else{
+                        array_push($tmps,  "`{$t}`.{$f}=".$v);
+                    }
                 }
                 if(sizeof($tmps)>0){
                     $tmpsql.=" AND ".implode(" AND ", $tmps);
