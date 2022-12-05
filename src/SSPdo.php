@@ -46,7 +46,6 @@ class SSPdo
         $this->beans = $this->conf->loadByKey("db");
 
         $dbset = $this->initDbSet();
-        SSLog::info($dbset);
         for ($i = 0; $i < 10; ++$i) {
             //预防serverless版本的TDSQL-C出现自动停止，需要自动重连
             $tmp = $this->reinit($dbset);
@@ -156,12 +155,19 @@ class SSPdo
             $values = [];
             foreach ($fields as $field) {
                 array_push($tabFileds, $field['field']);
-                array_push($values, $field['attr']);
+                $attr = $field['attr'];
+                foreach($bean['propertys'] as $prop){
+                    if($prop['field']==$field['field']&&$prop['type']=='geometry'){
+                        $attr = "ST_GeomFromText('".$field['attr']."')";
+                    }
+                }
+                array_push($values, $attr);
             }
 
             $key = implode(',', $tabFileds);
             $val = implode(',', $values);
 
+            
             $sql = "INSERT INTO `{$tab}` ({$key}) VALUES ({$val})";
             SSLog::info($sql);
             $res = $this->pdo->exec($sql);
@@ -170,12 +176,11 @@ class SSPdo
                 return false;
             }
             return $this->pdo->lastInsertId();
-        } catch (\PDOException $e) {
+        } catch (\PDOException$e) {
             SSLog::error($e->getMessage());
         }
         return false;
     }
-
 
     /**
      * 批量增加对象
@@ -258,7 +263,7 @@ class SSPdo
             // SSLog::debug($sql);
             $stmt = $this->pdo->query($sql);
             $pros = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-            if(sizeof($pros)==0){
+            if (sizeof($pros) == 0) {
                 return [];
             }
             if (null === $beanName) {
@@ -289,7 +294,7 @@ class SSPdo
             $bean = $this->conf->loadByKey("db")[$beanName];
             $this->limit(0, 1);
             $sql = $this->getSelectSql($bean);
-            // SSLog::info($sql);
+            SSLog::info($sql);
             $stmt = $this->pdo->query($sql['sql']);
             $pros = $stmt->fetchAll(\PDO::FETCH_ASSOC);
             $rets = $this->dbToObj($bean, $pros);
@@ -384,10 +389,10 @@ class SSPdo
     {
         $tmps = [];
         //用户配置的字段信息
-        
+
         if (sizeof($this->outFields) > 0) {
-            foreach ($bean['propertys'] as $key => $val) {                
-                if (false===array_search($key, $this->outFields) ) {
+            foreach ($bean['propertys'] as $key => $val) {
+                if (false === array_search($key, $this->outFields)) {
                     array_push($tmps, $key);
                 }
             }
@@ -397,7 +402,7 @@ class SSPdo
                     array_push($tmps, $key);
                 }
             } else {
-                foreach ($this->fields as $key => $val) {
+                foreach ($this->fields as $val) {
                     array_push($tmps, $val);
                 }
             }
@@ -409,7 +414,8 @@ class SSPdo
     /**
      * 设置要查询出的关联表的字段
      */
-    public function setJoinFields($objName, $fields){
+    public function setJoinFields($objName, $fields)
+    {
         $this->joinFields[$objName] = $fields;
         return $this;
     }
@@ -420,46 +426,53 @@ class SSPdo
      */
     private function formatField($bean)
     {
-        $tmps = [];
         $fields = [];
         //用户配置的字段信息
-        $tmps = $this->getFields($bean);
-
-        foreach ($tmps as $tmp) {
-            $field = $this->isCanQueryField($bean, $tmp);
+        $props = $this->getFields($bean);
+        foreach ($props as $prop) {
+            $field = $this->isCanQueryField($bean, $prop);
             if (false !== $field) {
                 if (!array_key_exists($bean['table'], $fields)) {
                     $fields[$bean['table']] = [];
                 }
-                array_push($fields[$bean['table']], "{$bean['table']}.{$field} as {$bean['table']}_{$field}");
+                
+                $tmpfield = "{$bean['table']}.{$field} as {$bean['table']}_{$field}";
+                if('geometry'==$bean['propertys'][$prop]['type']){
+                    $tmpfield = "ST_AsText({$bean['table']}.{$field}) {$bean['table']}_{$field}";
+                }
+                array_push($fields[$bean['table']], $tmpfield);
             } else {
                 //特殊类型字段
-                if (array_key_exists($tmp, $bean['propertys'])) {
-                    if ($bean['propertys'][$tmp]['type'] == 'one-to-one'
+                if (array_key_exists($prop, $bean['propertys'])) {
+                    if ($bean['propertys'][$prop]['type'] == 'one-to-one'
                         //|| $bean['propertys'][$tmp]['type'] == 'one-to-many'
                     ) {
                         $beans = $this->conf->loadByKey("db");
-                        $objname = $bean['propertys'][$tmp]['relation']['object'];
-                        if(isset($this->joinFields[$objname])){
+                        $objname = $bean['propertys'][$prop]['relation']['object'];
+                        if (isset($this->joinFields[$objname])) {
                             $tmps = [];
                             $jfs = $this->joinFields[$objname];
                             $tmpBean = $this->conf->loadByKey("db")[$objname];
-                            foreach($jfs as $objName){
+                            SSLog::info($tmpBean);
+                            foreach ($jfs as $objName) {
                                 array_push($tmps, $this->isCanQueryField($tmpBean, $objName));
                             }
-                        }else{
+                        } else {
                             $tmps = $this->getFieldByObjectName($objname);
                         }
-                        
-                       
+
                         $objtable = $beans[$objname]['table'];
                         $fields[$objtable] = [];
                         foreach ($tmps as $tmp) {
-                            array_push($fields[$objtable], 
-                            $objtable . "." . $tmp . ' AS ' . $objtable . "_" . $tmp);
+                            $fq = $objtable . "." . $tmp . ' AS ' . $objtable . "_" . $tmp;
+                            foreach ($beans[$objname]['propertys'] as $prop) {
+                                if ($prop['field'] == $tmp && $prop['type'] == 'geometry') {
+                                    $fq = 'ST_AsText(' . $objtable . "." . $tmp . ') ' . $objtable . "_" . $tmp;
+                                }
+                            }
+                            array_push($fields[$objtable], $fq);
                         }
                     }
-                }else{
                 }
             }
         }
@@ -599,14 +612,14 @@ class SSPdo
     private function getWhereConf($bean)
     {
         $ands = [];
-        foreach($this->extraWheres as $ex){
+        foreach ($this->extraWheres as $ex) {
             array_push($ands, $ex);
         }
 
         if (sizeof($this->whereState) == 0) {
             return $ands;
         }
-        
+
         foreach ($this->whereState as $where) {
             if ($where[0] == 'or' && $where[1] == 'or') {
                 $tmps = $where[2];
@@ -623,7 +636,7 @@ class SSPdo
                 array_push($ands, $this->getSqlConf($bean, $where));
             }
         }
-        
+
         return $ands;
     }
 
@@ -639,23 +652,23 @@ class SSPdo
         if (array_key_exists($conf[0], $pros)) {
             $pro = $pros[$conf[0]];
 
-            if(is_array($conf[2])){
-                if($this->isStr($pro['type'])){
-                    for($i=0;$i<sizeof($conf[2]);++$i){
+            if (is_array($conf[2])) {
+                if ($this->isStr($pro['type'])) {
+                    for ($i = 0; $i < sizeof($conf[2]); ++$i) {
                         $conf[2][$i] = "'{$conf[2][$i]}'";
                     }
                 }
                 $vt = implode(',', $conf[2]);
                 $op = '';
-                if($conf[1] == 'in'){
+                if ($conf[1] == 'in') {
                     $op = 'in';
-                }else if($conf[1] == 'nin'){
+                } else if ($conf[1] == 'nin') {
                     $op = 'not in';
-                }else{
+                } else {
                     SSLog::error('数组检索条件异常');
                 }
                 return "{$tab}.{$pro['field']} {$op} ({$vt})";
-            }else if (is_null($conf[2])) {
+            } else if (is_null($conf[2])) {
                 //null条件组装
                 if ($conf[1] == '=' || $conf[1] == '==') {
                     return "{$tab}.{$pro['field']} is null";
@@ -666,7 +679,7 @@ class SSPdo
             } else {
                 return "{$tab}.{$pro['field']} {$conf[1]} {$conf[2]}";
             }
-        }else{
+        } else {
 
         }
         SSLog::error("异常属性{$conf[0]},未对表{$tab}配置对应属性");
@@ -690,10 +703,11 @@ class SSPdo
      * 配置的额外where查询条件,附加在主表查询条件中
      * @param array ['beanname'=>sql] 关联条件
      */
-    public function setExtraWhere($sqls){
+    public function setExtraWhere($sqls)
+    {
         foreach ($sqls as $beanName => $sql) {
             $beans = $this->conf->loadByKey("db");
-            if(isset($beans[$beanName])){
+            if (isset($beans[$beanName])) {
                 array_push($this->extraWheres, $sql);
             }
         }
@@ -703,7 +717,8 @@ class SSPdo
      * 配置额外的查询字段,附加在查询中
      * @param array ['fieldname'=>sql] 关联条件
      */
-    public function setExtraField($sqls){
+    public function setExtraField($sqls)
+    {
         foreach ($sqls as $fieldname => $sql) {
             $this->extraFields[$fieldname] = $sql;
         }
@@ -726,14 +741,19 @@ class SSPdo
         $tab = $bean['table'];
         //属性/字段关联表
         $fields = $this->formatField($bean);
+
         $tmpfields = [];
         foreach ($fields as $field) {
+            // if ($prop['field'] == $tmp && $prop['type'] == 'geometry') {
+            //     $fq = 'ST_AsText(' . $objtable . "." . $tmp . ') ' . $objtable . "_" . $tmp;
+            // }
+            
             array_push($tmpfields, implode(',', $field));
         }
-        
-        if(sizeof($this->extraFields)>0){
-            foreach($this->extraFields as $k=>$field){
-                array_push($tmpfields, '('.$field.') as '.$k);
+
+        if (sizeof($this->extraFields) > 0) {
+            foreach ($this->extraFields as $k => $field) {
+                array_push($tmpfields, '(' . $field . ') as ' . $k);
             }
         }
         $keys = implode(',', $tmpfields);
@@ -749,40 +769,33 @@ class SSPdo
         foreach ($joins as $join) {
             $jt = $join['totable'];
 
-            $tmpsql =  "LEFT JOIN `{$jt}` ON
+            $tmpsql = "LEFT JOIN `{$jt}` ON
             `{$join['fromtable']}`.{$join['fromfield']}=`{$jt}`.{$join['tofield']}";
-            
-            if(isset($this->relConfs[$join['toobj']])){
+
+            if (isset($this->relConfs[$join['toobj']])) {
                 $tmps = [];
-                $tmpProps = $this->beans[$join['toobj']]['propertys'];
-                foreach($this->relConfs[$join['toobj']] as $k=>$v){
-                    $t = $this->beans[$join['toobj']]['table'];
-                    $f = $tmpProps[$k]['field'];
-                    if($this->isStr($tmpProps[$k]['type'])){
-                        array_push($tmps,  "`{$t}`.{$f}='".$v."'");
-                    }else{
-                        array_push($tmps,  "`{$t}`.{$f}=".$v);
-                    }
+                foreach ($this->relConfs[$join['toobj']] as $k => $v) {
+                    $tmpOneWhere = $this->getOneWhere($this->beans[$join['toobj']], $k, $v);
+                    array_push($tmps, $tmpOneWhere);                 
                 }
-                if(sizeof($tmps)>0){
-                    $tmpsql.=" AND ".implode(" AND ", $tmps);
+                if (sizeof($tmps) > 0) {
+                    $tmpsql .= " AND " . implode(" AND ", $tmps);
                 }
             }
             array_push($joinSql, $tmpsql);
         }
 
-
         $joinSql = implode(' ', $joinSql);
 
         $order = '';
         if (isset($this->order['property'])) {
-            if(isset($bean['propertys'][$this->order['property']]['field'])){
+            if (isset($bean['propertys'][$this->order['property']]['field'])) {
                 $key = $bean['propertys'][$this->order['property']]['field'];
                 $order = "ORDER BY {$bean['table']}." . $key . ' ' . $this->order['order'];
-            }else{
+            } else {
                 $order = "ORDER BY " . $this->order['property'] . ' ' . $this->order['order'];
             }
-            
+
         }
 
         $limit = '';
@@ -898,7 +911,7 @@ class SSPdo
                     }
                 }
             }
-            foreach($this->extraFields as $key=>$sql){
+            foreach ($this->extraFields as $key => $sql) {
                 if (array_key_exists($key, $ret)) {
                     $tmp[$key] = $ret[$key];
                 }
@@ -961,18 +974,16 @@ class SSPdo
             $sf = $pros[$fd]['relation']['toProperty'];
 
             //主表未查询出结果, 或查询的内容未返回主附表关联字段, 则将需要查询的many字段直接置为空数组
-            if(sizeof($retobjs)==0||!isset($retobjs[0][$mf])){
-                for($i=0;$i<sizeof($retobjs);++$i){
+            if (sizeof($retobjs) == 0 || !isset($retobjs[0][$mf])) {
+                for ($i = 0; $i < sizeof($retobjs); ++$i) {
                     $retobjs[$fd] = [];
                 }
                 continue;
             }
-
             $ids = [];
             foreach ($retobjs as $ret) {
                 array_push($ids, $ret[$mf]);
             }
-
             //配置关联条件
             $relObjName = $pros[$fd]['relation']['object']; //主表关联的对象
             //主附表关联的主信息转为查询条件
@@ -984,9 +995,8 @@ class SSPdo
                     $pros[$fd]['relation']['toProperty'] => $ids,
                 ];
             }
-
+            
             $joinRets = $this->queryJoin($fd, $pros, $this->beans, $sf);
-
             for ($i = 0; $i < sizeof($retobjs); ++$i) {
                 $rs = [];
                 if (isset($joinRets[$retobjs[$i][$mf]])) {
@@ -1004,20 +1014,20 @@ class SSPdo
      */
     private function queryJoin($field, $pros, $beans, $cateField)
     {
+        // SSLog::info($field, $pros, $cateField);
         $relObjName = $pros[$field]['relation']['object'];
         $relObj = $beans[$relObjName];
         $sql = "select * from " . $beans[$pros[$field]['relation']['object']]['table'];
-
+        
         //组合条件
         $confs = $this->getConfs($relObjName, $this->relConfs[$relObjName]);
-       
+
         $joinWhere = [];
         foreach ($confs as $conf) {
             array_push($joinWhere, $this->getSqlConf($relObj, $conf));
         }
 
-        $sql = $sql . ' where ' . implode(' and ', $joinWhere);
-        // SSLog::info($sql);
+        $sql = $sql . ' where ' . implode(' and ', $joinWhere)." limit 100";
         $stmt = $this->pdo->query($sql);
         $cates = [];
         if ($stmt !== false) {
@@ -1084,30 +1094,30 @@ class SSPdo
                 if ($op == '%') {
                     $op = 'like';
                 }
-                if($op=='='&&is_array($val)){
+                if ($op == '=' && is_array($val)) {
                     $op = 'in';
                 }
 
-            }  else if (preg_match('/(.*)(\!\[\])$/', $key, $match)) {
+            } else if (preg_match('/(.*)(\!\[\])$/', $key, $match)) {
                 //![]
                 $propertyName = $match[1];
-                $op = 'nin';                
-            }  else if (preg_match('/(.*)(\[\])$/', $key, $match)) {
+                $op = 'nin';
+            } else if (preg_match('/(.*)(\[\])$/', $key, $match)) {
                 //[]
                 $propertyName = $match[1];
                 $op = 'in';
-            }else{
-                if(is_array($val)){
+            } else {
+                if (is_array($val)) {
                     $op = 'in';
                 }
             }
             if (array_key_exists($propertyName, $pros)) {
                 $this->where($propertyName, $op, $val);
-            }else{
+            } else {
                 SSLog::error("{$beanName}未配置属性{$propertyName}");
             }
         }
-        
+
     }
 
     /**
@@ -1142,19 +1152,17 @@ class SSPdo
             } else if (is_array($val)) {
                 $propertyName = $key;
                 $op = 'in';
-                
+
                 if (preg_match('/(.*)(\!\[\])$/', $key, $match)) {
                     //![]
                     $propertyName = $match[1];
-                    $op = 'nin';                
-                }  else if (preg_match('/(.*)(\[\])$/', $key, $match)) {
+                    $op = 'nin';
+                } else if (preg_match('/(.*)(\[\])$/', $key, $match)) {
                     //[]
                     $propertyName = $match[1];
-                    $op = 'in';                
-                } 
-
-
-                if (!is_numeric($val[0])) {
+                    $op = 'in';
+                }
+                if($this->isStr($pros[$propertyName]['type'])){
                     for ($i = 0; $i < sizeof($val); ++$i) {
                         $val[$i] = "'{$val[$i]}'";
                     }
@@ -1178,7 +1186,7 @@ class SSPdo
     public function getObjects($beanName, $obj = [])
     {
         try {
-            if (sizeof($obj) > 0) {                
+            if (sizeof($obj) > 0) {
                 $this->initConf($beanName, $obj);
             }
             $bean = $this->conf->loadByKey("db")[$beanName];
@@ -1221,7 +1229,7 @@ class SSPdo
      * @param array $obj 条件
      * @return int|false false失败/否则返回更新条数
      */
-    public function updateObject($beanName, $newData,  $para=[])
+    public function updateObject($beanName, $newData, $para = [])
     {
         if (sizeof($para) > 0) {
             $this->initConf($beanName, $para);
@@ -1289,20 +1297,67 @@ class SSPdo
         return $this;
     }
 
+    /**
+     * 单一查询条件转sql的where语句
+     */
+    private function getOneWhere($bean, $key, $val)
+    {
+        $conf = $this->formatWhere($key, $val);
+        $conf = $this->buildWhere($conf[0], $conf[1], $conf[2]);
+        $wh = $this->getSqlConf($bean, $conf);
+        return $wh;
+    }
+
+    /**
+     * 格式化查询参数
+     */
+    private function formatWhere($key, $val)
+    {
+        $op = '=';
+        $propertyName = $key;
+        $val = $val;
+        $isarray = is_array($val);
+        if (preg_match("/(.*)(\>\=|\<\=|\!\=)$/i", $key, $match)) {
+            //>= <= !=
+            $propertyName = $match[1];
+            $op = $match[2];
+        } else if (preg_match('/(.*)([=,>,<,\%])$/', $key, $match)) {
+            //= > < %
+            $propertyName = $match[1];
+            $op = $match[2];
+            if ($op == '%') {
+                $op = 'like';
+            }
+            if ($op == '=' && $isarray) {
+                $op = 'in';
+            }
+        } else if (preg_match('/(.*)(\!\[\])$/', $key, $match)) {
+            //![]
+            $propertyName = $match[1];
+            $op = 'nin';
+        } else if (preg_match('/(.*)(\[\])$/', $key, $match)) {
+            //[]
+            $propertyName = $match[1];
+            $op = 'in';
+        } else if ($isarray) {
+            $op = 'in';
+        }
+        return [$propertyName, $op, $val];
+    }
+
     public function buildWhere($key, $op, $val)
     {
         switch ($op) {
             case '==':
-                if (is_string($val)) {
-                    return [$key, '=', $this->pdo->quote($val)];
-                }
-                return [$key, '=', $val];
             case '!=':
             case "=":
             case '>':
             case '>=':
             case '<':
             case '<=':
+                if ($op == '==') {
+                    $op = '=';
+                }
                 if (is_string($val)) {
                     return [$key, $op, $this->pdo->quote($val)];
                 }
