@@ -156,12 +156,19 @@ class SSPdo
             foreach ($fields as $field) {
                 array_push($tabFileds, $field['field']);
                 $attr = $field['attr'];
+                //专门处理geometry类型字段
                 foreach($bean['propertys'] as $prop){
-                    if($prop['field']==$field['field']&&$prop['type']=='geometry'){
+                    // SSLog::info($prop, $field);
+                    if(isset($prop['field'])&&$prop['field']==$field['field']&&$prop['type']=='geometry'){
                         $attr = "ST_GeomFromText('".$field['attr']."')";
                     }
                 }
-                array_push($values, $attr);
+                
+                if(null==$attr){
+                    array_push($values, \PDO::PARAM_NULL);
+                }else{
+                    array_push($values, $attr);
+                }
             }
 
             $key = implode(',', $tabFileds);
@@ -202,8 +209,12 @@ class SSPdo
                 $tmpval = [];
                 $fields = $this->getFieldByObj($bean, $obj);
                 foreach ($fields as $field) {
+                    if(null==$field['attr']){
+                        array_push($tmpval, \PDO::PARAM_NULL);
+                    }else{
+                        array_push($tmpval, $field['attr']);
+                    }
                     array_push($tabFileds, $field['field']);
-                    array_push($tmpval, $field['attr']);
                 }
                 $key = implode(',', $tabFileds);
                 $val = implode(',', $tmpval);
@@ -317,6 +328,7 @@ class SSPdo
     private function getFieldByObj($bean, $data)
     {
         $tmps = [];
+        
         foreach ($data as $key => $val) {
             foreach ($bean['propertys'] as $pk => $pv) {
                 if ($key == $pk && isset($pv['field'])) {
@@ -329,9 +341,7 @@ class SSPdo
                     } else {
                         $tmp = $val;
                     }
-                    if (null === $tmp) {
-                        continue;
-                    }
+                
 
                     array_push($tmps,
                         [
@@ -466,7 +476,7 @@ class SSPdo
                         foreach ($tmps as $tmp) {
                             $fq = $objtable . "." . $tmp . ' AS ' . $objtable . "_" . $tmp;
                             foreach ($beans[$objname]['propertys'] as $prop) {
-                                if ($prop['field'] == $tmp && $prop['type'] == 'geometry') {
+                                if (isset($prop['field'])&& $prop['field'] == $tmp && $prop['type'] == 'geometry') {
                                     $fq = 'ST_AsText(' . $objtable . "." . $tmp . ') ' . $objtable . "_" . $tmp;
                                 }
                             }
@@ -543,6 +553,7 @@ class SSPdo
         $this->order = [];
         $this->extraWheres = [];
         $this->extraFields = [];
+        $this->relConfs = [];
     }
 
     /**
