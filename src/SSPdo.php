@@ -36,6 +36,8 @@ class SSPdo
     //关联表需要查询出的字段信息
     private $joinFields = [];
     private $extraFields = [];
+    private $skip = 0;
+    private $relOrderField = [];
 
     /**
      * @param $right 账号权限,default为默认,read为读账户,readwrite 为读写账号
@@ -544,7 +546,7 @@ class SSPdo
     public function cleanWhere()
     {
         $this->limit = null;
-        $this->skip = null;
+        $this->skip = 0;
         $this->fields = [];
         $this->outFields = [];
         $this->whereState = [];
@@ -555,7 +557,6 @@ class SSPdo
         $this->extraFields = [];
         $this->relConfs = [];
     }
-
     /**
      * 设置返回的字段
      * 若要扣除某个属性不返回, 属性名前追加-,此功能和普通返回属性不兼容
@@ -1202,7 +1203,7 @@ class SSPdo
             }
             $bean = $this->conf->loadByKey("db")[$beanName];
             $sql = $this->getSelectSql($bean);
-            SSLog::info($sql);
+            // SSLog::info($sql);
             $stmt = $this->pdo->query($sql['sql']);
             if ($stmt === false) {
                 $this->cleanWhere();
