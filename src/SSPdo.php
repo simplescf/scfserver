@@ -17,14 +17,9 @@ $_PDO = null;
 
 class SSPdo
 {
-    private $tcb;
-    private $db;
     private $conf;
-    //
     private $fields = [];
-    //
     private $outFields = [];
-
     private $whereState = [];
     private $order = [];
     private $_;
@@ -37,13 +32,14 @@ class SSPdo
     private $joinFields = [];
     private $extraFields = [];
     private $skip = 0;
-    private $relOrderField = [];
+    private $debug = false;
 
     /**
      * @param $right 账号权限,default为默认,read为读账户,readwrite 为读写账号
      */
-    public function __construct()
+    public function __construct($_debug = false)
     {
+        $this->debug = $_debug;
         $this->conf = new SSConf();
         $this->beans = $this->conf->loadByKey("db");
 
@@ -102,7 +98,7 @@ class SSPdo
             }
 
         } else {
-            SSLog::debug('复用PDO');
+            if($this->debug) SSLog::debug('复用PDO');
         }
         $this->pdo = $_PDO;
         $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
@@ -160,7 +156,6 @@ class SSPdo
                 $attr = $field['attr'];
                 //专门处理geometry类型字段
                 foreach($bean['propertys'] as $prop){
-                    // SSLog::info($prop, $field);
                     if(isset($prop['field'])&&$prop['field']==$field['field']&&$prop['type']=='geometry'){
                         $attr = "ST_GeomFromText('".$field['attr']."')";
                     }
@@ -178,7 +173,7 @@ class SSPdo
 
             
             $sql = "INSERT INTO `{$tab}` ({$key}) VALUES ({$val})";
-            SSLog::info($sql);
+            if($this->debug) SSLog::info($sql);
             $res = $this->pdo->exec($sql);
             if (0 == $res || false === $res) {
                 SSLog::error($this->pdo->errorInfo());
@@ -210,6 +205,7 @@ class SSPdo
                 $tabFileds = [];
                 $tmpval = [];
                 $fields = $this->getFieldByObj($bean, $obj);
+                
                 foreach ($fields as $field) {
                     if(null==$field['attr']){
                         array_push($tmpval, \PDO::PARAM_NULL);
@@ -225,7 +221,7 @@ class SSPdo
             }
             $valtxt = implode(',', $values);
             $sql = "INSERT INTO {$tab} ({$key}) VALUES {$valtxt}";
-            SSLog::info($sql);
+            if($this->debug) SSLog::info($sql);
             $res = $this->pdo->exec($sql);
             if (0 == $res || false === $res) {
                 SSLog::error($this->pdo->errorInfo());
@@ -233,7 +229,7 @@ class SSPdo
             }
             return $this->pdo->lastInsertId();
         } catch (\PDOException$e) {
-            SSLog::info($e->getMessage());
+            SSLog::error($e->getMessage());
         }
         return false;
     }
@@ -252,7 +248,7 @@ class SSPdo
 
             $bean = $this->conf->loadByKey("db")[$beanName];
             $sql = $this->getCountSql($bean);
-            SSLog::info($sql);
+            if($this->debug) SSLog::info($sql);
             $this->cleanWhere();
             $stmt = $this->pdo->query($sql);
             $pros = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -273,7 +269,6 @@ class SSPdo
     public function query($sql, $beanName = null)
     {
         try {
-            // SSLog::debug($sql);
             $stmt = $this->pdo->query($sql);
             $pros = $stmt->fetchAll(\PDO::FETCH_ASSOC);
             if (sizeof($pros) == 0) {
@@ -307,7 +302,7 @@ class SSPdo
             $bean = $this->conf->loadByKey("db")[$beanName];
             $this->limit(0, 1);
             $sql = $this->getSelectSql($bean);
-            SSLog::info($sql);
+            if($this->debug) SSLog::info($sql);
             $stmt = $this->pdo->query($sql['sql']);
             $pros = $stmt->fetchAll(\PDO::FETCH_ASSOC);
             $rets = $this->dbToObj($bean, $pros);
@@ -408,6 +403,7 @@ class SSPdo
                     array_push($tmps, $key);
                 }
             }
+            if($this->debug) SSLog::info($tmps);
         } else {
             if (sizeof($this->fields) == 0) {
                 foreach ($bean['propertys'] as $key => $val) {
@@ -465,7 +461,7 @@ class SSPdo
                             $tmps = [];
                             $jfs = $this->joinFields[$objname];
                             $tmpBean = $this->conf->loadByKey("db")[$objname];
-                            SSLog::info($tmpBean);
+                            if($this->debug) SSLog::info($tmpBean);
                             foreach ($jfs as $objName) {
                                 array_push($tmps, $this->isCanQueryField($tmpBean, $objName));
                             }
@@ -499,17 +495,24 @@ class SSPdo
     private function getJoin($bean)
     {
         $fields = $this->formatField($bean);
-
         $pros = $bean['propertys'];
         $beans = $this->conf->loadByKey("db");
         $joins = [];
-        foreach ($pros as $pro) {
+        $props = $this->getFields($bean);
+        if($this->debug) SSLog::info($props);
+        foreach ($pros as $keyname=>$pro) {
             if ($pro['type'] == 'one-to-one' ||
                 $pro['type'] == 'many-to-one'
                 // || $pro['type'] == 'one-to-many'
             ) {
+                if(!array_search($keyname, $props)){
+                    if($this->debug) SSLog::info($keyname);
+                    continue;
+                }
+
                 $toPros = $beans[$pro['relation']['object']]['propertys'];
                 $relTable = $beans[$pro['relation']['object']]['table'];
+                
                 if (array_key_exists($relTable, $fields)) {
                     array_push($joins, [
                         'toobj' => $pro['relation']['object'],
@@ -551,7 +554,6 @@ class SSPdo
         $this->outFields = [];
         $this->whereState = [];
         $this->joinFields = [];
-        $this->relOrderField = [];
         $this->order = [];
         $this->extraWheres = [];
         $this->extraFields = [];
@@ -762,7 +764,6 @@ class SSPdo
             
             array_push($tmpfields, implode(',', $field));
         }
-
         if (sizeof($this->extraFields) > 0) {
             foreach ($this->extraFields as $k => $field) {
                 array_push($tmpfields, '(' . $field . ') as ' . $k);
@@ -840,7 +841,7 @@ class SSPdo
         $tab = $bean['table'];
 
         $nqs = [];
-        SSLog::info($data);
+        if($this->debug) SSLog::info($data);
         foreach ($data as $key => $val) {
 
             if (array_key_exists($key, $bean['propertys'])) {
@@ -856,7 +857,7 @@ class SSPdo
                 array_push($nqs, $tmp);
             }
         }
-        SSLog::info($nqs);
+        if($this->debug) SSLog::info($nqs);
         $set = implode(',', $nqs);
 
         //where条件
@@ -1026,7 +1027,6 @@ class SSPdo
      */
     private function queryJoin($field, $pros, $beans, $cateField)
     {
-        // SSLog::info($field, $pros, $cateField);
         $relObjName = $pros[$field]['relation']['object'];
         $relObj = $beans[$relObjName];
         $sql = "select * from " . $beans[$pros[$field]['relation']['object']]['table'];
@@ -1141,7 +1141,7 @@ class SSPdo
     {
         $set = $this->conf->loadByKey("db");
         if (!isset($set[$beanName])) {
-            SSLog::info("未配置{$beanName}对应的表");
+            if($this->debug) SSLog::info("未配置{$beanName}对应的表");
             return;
         }
         $pros = $set[$beanName]['propertys'];
@@ -1203,7 +1203,7 @@ class SSPdo
             }
             $bean = $this->conf->loadByKey("db")[$beanName];
             $sql = $this->getSelectSql($bean);
-            // SSLog::info($sql);
+            if($this->debug) SSLog::info($sql);
             $stmt = $this->pdo->query($sql['sql']);
             if ($stmt === false) {
                 $this->cleanWhere();
@@ -1253,9 +1253,9 @@ class SSPdo
         }
         $bean = $this->conf->loadByKey("db")[$beanName];
         $sql = $this->getUpdateSql($newData, $bean);
-        SSLog::info($sql);
+        if($this->debug) SSLog::info($sql);
         $rows = $this->pdo->exec($sql);
-        SSLog::info($rows);
+        if($this->debug) SSLog::info($rows);
         $this->cleanWhere();
         if (false === $rows) {
             SSLog::error($this->pdo->errorInfo());
@@ -1295,7 +1295,7 @@ class SSPdo
     {
         // ['or', 'or', 条件数组]为or
         $confs = ['or', 'or', []];
-        SSLog::info(func_get_args());
+        if($this->debug) SSLog::info(func_get_args());
         foreach (func_get_args() as $paras) {
             $tmp = [];
 
@@ -1459,6 +1459,7 @@ class SSPdo
 
     /**
      * 物理删除数据库记录
+     * @return false|int
      */
     public function deleteObject($beanName)
     {
@@ -1468,7 +1469,7 @@ class SSPdo
         }
         $bean = $this->conf->loadByKey("db")[$beanName];
         $sql = $this->getDeleteSql($bean);
-        SSLog::info($sql);
+        if($this->debug) SSLog::info($sql);
         $rows = $this->pdo->exec($sql);
         $this->cleanWhere();
         if (false === $rows) {
