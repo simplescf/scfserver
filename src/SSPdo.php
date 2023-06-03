@@ -503,7 +503,6 @@ class SSPdo
         foreach ($pros as $keyname=>$pro) {
             if ($pro['type'] == 'one-to-one' ||
                 $pro['type'] == 'many-to-one'
-                // || $pro['type'] == 'one-to-many'
             ) {
                 if(!array_search($keyname, $props)){
                     if($this->debug) SSLog::info($keyname);
@@ -514,13 +513,18 @@ class SSPdo
                 $relTable = $beans[$pro['relation']['object']]['table'];
                 
                 if (array_key_exists($relTable, $fields)) {
-                    array_push($joins, [
+                    $tmpj = [
                         'toobj' => $pro['relation']['object'],
                         'totable' => $beans[$pro['relation']['object']]['table'],
                         'fromtable' => $bean['table'],
                         'fromfield' => $pros[$pro['relation']['fromProperty']]['field'],
                         'tofield' => $toPros[$pro['relation']['toProperty']]['field'],
-                    ]);
+                    ];
+                    //关联的on条件
+                    if(isset($pro['relation']['on'])){
+                        $tmpj['on'] = $pro['relation']['on'];
+                    }
+                    array_push($joins, $tmpj);
                 }
             }
         }
@@ -758,10 +762,6 @@ class SSPdo
 
         $tmpfields = [];
         foreach ($fields as $field) {
-            // if ($prop['field'] == $tmp && $prop['type'] == 'geometry') {
-            //     $fq = 'ST_AsText(' . $objtable . "." . $tmp . ') ' . $objtable . "_" . $tmp;
-            // }
-            
             array_push($tmpfields, implode(',', $field));
         }
         if (sizeof($this->extraFields) > 0) {
@@ -781,7 +781,6 @@ class SSPdo
 
         foreach ($joins as $join) {
             $jt = $join['totable'];
-
             $tmpsql = "LEFT JOIN `{$jt}` ON
             `{$join['fromtable']}`.{$join['fromfield']}=`{$jt}`.{$join['tofield']}";
 
@@ -1008,6 +1007,13 @@ class SSPdo
                     $pros[$fd]['relation']['toProperty'] => $ids,
                 ];
             }
+
+            if(isset($pros[$fd]['relation']['where'])){
+                $ws = $pros[$fd]['relation']['where'];
+                foreach($ws as $w){
+                    $this->relConfs[$relObjName][$w['key']] = $w['value'];
+                }
+            }
             
             $joinRets = $this->queryJoin($fd, $pros, $this->beans, $sf);
             for ($i = 0; $i < sizeof($retobjs); ++$i) {
@@ -1032,6 +1038,7 @@ class SSPdo
         $sql = "select * from " . $beans[$pros[$field]['relation']['object']]['table'];
         
         //组合条件
+        if($this->debug) SSLog::info($this->relConfs);
         $confs = $this->getConfs($relObjName, $this->relConfs[$relObjName]);
 
         $joinWhere = [];
@@ -1040,6 +1047,7 @@ class SSPdo
         }
 
         $sql = $sql . ' where ' . implode(' and ', $joinWhere)." limit 100";
+        if($this->debug) SSLog::info($sql);
         $stmt = $this->pdo->query($sql);
         $cates = [];
         if ($stmt !== false) {
