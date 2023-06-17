@@ -197,15 +197,46 @@ class SSPdo
         try {
             $bean = $this->conf->loadByKey("db")[$beanName];
             $tab = $bean['table'];
-
             $values = [];
 
             //属性/字段关联表
+            $allFields = [];
+            foreach ($objs as $obj) {
+                $fields = $this->getFieldByObj($bean, $obj);
+                foreach ($fields as $field) {
+                    array_push($allFields, $field['field']);
+                }
+            }
+            $allFields = array_unique($allFields);
+            $key = implode(',', $allFields);
+
+            foreach ($objs as $obj) {
+                $tmpval = [];
+                $fields = $this->getFieldByObj($bean, $obj);
+                foreach ($allFields as $field) {
+                    $val = '';
+                    foreach($fields as $tmp){
+                        // SSLog::info($tmp, $field);
+                        if($tmp['field']==$field){
+                            if(null==$tmp['attr']){
+                                $val = \PDO::PARAM_NULL;
+                            }else{
+                                $val = $tmp['attr'];
+                            }
+                            break;
+                        }
+                    }
+                    array_push($tmpval, $val);
+                }
+                $val = implode(',', $tmpval);
+                array_push($values, "({$val})");
+            }
+
+            /*
             foreach ($objs as $obj) {
                 $tabFileds = [];
                 $tmpval = [];
-                $fields = $this->getFieldByObj($bean, $obj);
-                
+                $fields = $this->getFieldByObj($bean, $obj);                
                 foreach ($fields as $field) {
                     if(null==$field['attr']){
                         array_push($tmpval, \PDO::PARAM_NULL);
@@ -216,9 +247,12 @@ class SSPdo
                 }
                 $key = implode(',', $tabFileds);
                 $val = implode(',', $tmpval);
-
                 array_push($values, "({$val})");
             }
+            */
+
+
+
             $valtxt = implode(',', $values);
             $sql = "INSERT INTO {$tab} ({$key}) VALUES {$valtxt}";
             if($this->debug) SSLog::info($sql);
@@ -325,7 +359,6 @@ class SSPdo
     private function getFieldByObj($bean, $data)
     {
         $tmps = [];
-        
         foreach ($data as $key => $val) {
             foreach ($bean['propertys'] as $pk => $pv) {
                 if ($key == $pk && isset($pv['field'])) {
@@ -338,8 +371,6 @@ class SSPdo
                     } else {
                         $tmp = $val;
                     }
-                
-
                     array_push($tmps,
                         [
                             'attr' => $tmp,
@@ -695,7 +726,8 @@ class SSPdo
             } else if ($this->isStr($pro['type'])) {
                 return "{$tab}.{$pro['field']} {$conf[1]} {$conf[2]}";
             } else {
-                return "{$tab}.{$pro['field']} {$conf[1]} {$conf[2]}";
+                 $val = str_replace("'", "", $conf[2]);
+                return "{$tab}.{$pro['field']} {$conf[1]} {$val}";
             }
         } else {
 
